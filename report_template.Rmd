@@ -1,0 +1,307 @@
+---
+title: "MA153X -- Lesson 2: Descriptive Analytics Explorer"
+author: "`r params$student_name`"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  pdf_document:
+    latex_engine: pdflatex
+header-includes:
+  - \usepackage{xcolor}
+  - \usepackage{tcolorbox}
+  - \tcbuselibrary{skins,breakable}
+  - \definecolor{ansblue}{RGB}{238,244,251}
+  - \definecolor{solgreen}{RGB}{234,250,241}
+  - \definecolor{qgray}{RGB}{247,247,247}
+  - \usepackage[T1]{fontenc}
+  - \usepackage[utf8]{inputenc}
+params:
+  student_name: "Student"
+  ans1:  "(No answer provided.)"
+  ans2:  "(No answer provided.)"
+  ans3:  "(No answer provided.)"
+  ans4:  "(No answer provided.)"
+  ans5:  "(No answer provided.)"
+  ans6:  "(No answer provided.)"
+  ans7:  "(No answer provided.)"
+  ans8:  "(No answer provided.)"
+  ans9:  "(No answer provided.)"
+  ans10: "(No answer provided.)"
+  ans11: "(No answer provided.)"
+  ans12: "(No answer provided.)"
+  ans13: "(No answer provided.)"
+  hist_img: ""
+  box_img:  ""
+  scat_img: ""
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+# Escape LaTeX special characters in arbitrary student text
+latex_escape <- function(x) {
+  if (is.null(x) || nchar(trimws(x)) == 0) return("\\textit{(No answer provided.)}")
+  x <- gsub("\\",  "\\textbackslash{}",    x, fixed = TRUE)
+  x <- gsub("{",   "\\{",                  x, fixed = TRUE)
+  x <- gsub("}",   "\\}",                  x, fixed = TRUE)
+  x <- gsub("$",   "\\$",                  x, fixed = TRUE)
+  x <- gsub("&",   "\\&",                  x, fixed = TRUE)
+  x <- gsub("#",   "\\#",                  x, fixed = TRUE)
+  x <- gsub("%",   "\\%",                  x, fixed = TRUE)
+  x <- gsub("_",   "\\_",                  x, fixed = TRUE)
+  x <- gsub("^",   "\\textasciicircum{}",  x, fixed = TRUE)
+  x <- gsub("~",   "\\textasciitilde{}",   x, fixed = TRUE)
+  x <- gsub("<",   "\\textless{}",         x, fixed = TRUE)
+  x <- gsub(">",   "\\textgreater{}",      x, fixed = TRUE)
+  # Paragraph breaks then single newlines
+  x <- gsub("\n\n", "\\par ", x, fixed = TRUE)
+  x <- gsub("\n",   " ",      x, fixed = TRUE)
+  x
+}
+
+# Output a full RQ block: question box, student answer box, solution box
+rq_block <- function(label, question, answer, solution) {
+  cat(paste0(
+    "\\begin{tcolorbox}[colback=qgray, colframe=gray!50, boxrule=0.4pt,\n",
+    "  title={\\small\\textbf{", label, "}}]\n",
+    "\\small ", latex_escape(question), "\n",
+    "\\end{tcolorbox}\n",
+    "\\begin{tcolorbox}[colback=ansblue, colframe=blue!40, boxrule=0.4pt,\n",
+    "  title={\\small\\textbf{Your Answer}}, breakable]\n",
+    "\\small ", latex_escape(answer), "\n",
+    "\\end{tcolorbox}\n",
+    "\\begin{tcolorbox}[colback=solgreen, colframe=green!40!black, boxrule=0.4pt,\n",
+    "  title={\\small\\textbf{Instructor Solution}}, breakable]\n",
+    "\\small ", latex_escape(solution), "\n",
+    "\\end{tcolorbox}\n",
+    "\\vspace{6pt}\n\n"
+  ))
+}
+
+# Instructor solutions (not exposed in the Shiny UI)
+solutions <- list(
+
+  rq1 = paste(
+    "The dataset has 2,930 observations (rows) and 82 variables (columns).",
+    "One row represents a single residential home sale -- a complete record of all",
+    "measured attributes for one property at the time it was sold."
+  ),
+
+  rq2 = paste(
+    "Numerical variables take quantitative values on which arithmetic is meaningful.",
+    "Examples include Sale Price (measured in dollars) or Above-Ground Living Area",
+    "(in square feet). Categorical variables place homes into named groups with no",
+    "inherent numerical ordering. Examples include Building Type (labels such as",
+    "1Fam or Duplex) and Neighborhood."
+  ),
+
+  rq3 = paste(
+    "Sale Price records the total amount paid by the buyer, in U.S. dollars.",
+    "Given that this dataset covers Ames, Iowa (a mid-sized Midwest college town)",
+    "from 2006-2010, reasonable values range from roughly $12,000 for distressed",
+    "properties to about $760,000 for high-end homes. The vast majority of sales",
+    "fall between $100,000 and $300,000."
+  ),
+
+  rq4 = paste(
+    "The Sale Price distribution is right-skewed (positively skewed): most homes",
+    "are priced between $100,000 and $250,000, but a long tail extends toward",
+    "higher values. This tells us that a typical home in Ames costs roughly",
+    "$130,000-$180,000, but a minority of premium properties push prices well",
+    "above that range."
+  ),
+
+  rq5 = paste(
+    "The mean Sale Price is larger than the median. They differ because the",
+    "distribution is right-skewed -- a small number of very expensive homes pull",
+    "the arithmetic mean upward without affecting the median. The median is a better",
+    "measure of the typical home price because it is resistant to extreme high-end",
+    "values and represents the actual middle of the price distribution."
+  ),
+
+  rq6 = paste(
+    "With moderate bin widths, the histogram shows the 2000s (2000-2009) as the",
+    "decade with the most homes built, followed by the 1990s. Very narrow bins",
+    "reveal year-by-year variation but can look noisy, making trends harder to see.",
+    "Very wide bins smooth over fluctuations and highlight broad decade-level",
+    "patterns but hide finer detail. The right bin width depends on the question:",
+    "decade-level trends versus specific year peaks call for different choices."
+  ),
+
+  rq7 = paste(
+    "Single-family homes (1Fam) and Townhouse End Units (TwnhsE) tend to have the",
+    "highest median sale prices. Two-family conversions (2fmCon) and Duplexes",
+    "typically have the lowest medians. Building types with taller boxes (larger IQR)",
+    "-- such as 1Fam -- show the most variability in price, reflecting the wide range",
+    "of single-family home sizes and conditions in the market."
+  ),
+
+  rq8 = paste(
+    "Single-family homes (1Fam) typically show the largest gap between the mean",
+    "(x marker) and median (center line), because this group contains the",
+    "highest-priced outliers. When the mean is noticeably above the median, it",
+    "signals that the group's distribution is right-skewed -- a few very expensive",
+    "properties are pulling the group average above what most homes in that group",
+    "actually sold for."
+  ),
+
+  rq9 = paste(
+    "Stone Brook (StoneBr) and Northridge Heights (NridgHt) consistently rank among",
+    "the highest-median-price neighborhoods. Neighborhoods with the most outlier dots",
+    "-- points beyond the whiskers -- are typically larger, more diverse neighborhoods",
+    "like North Ames (NAmes) or College Creek (CollgCr), where a wide mix of property",
+    "types creates occasional extreme prices relative to the neighborhood median."
+  ),
+
+  rq10 = paste(
+    "There is a strong, positive linear relationship between above-ground living area",
+    "and sale price (Pearson r approximately 0.71): larger homes tend to command",
+    "higher prices. The scatter increases at larger home sizes. A few unusual points",
+    "appear -- some very large homes sell at unexpectedly low prices (possibly due to",
+    "poor condition), and there are a couple of extremely large properties that may be",
+    "influential outliers."
+  ),
+
+  rq11 = paste(
+    "When colored by Building Type, the groups occupy distinct regions: single-family",
+    "homes (1Fam) span the full range of sizes and prices; duplexes and two-family",
+    "conversions cluster at smaller sizes and lower prices; and townhouses occupy",
+    "intermediate positions. This suggests building type acts as a confounder -- part",
+    "of the size-price relationship is driven by the type of property, since different",
+    "building types are designed to different scales and market segments."
+  ),
+
+  rq12 = paste(
+    "Overall Quality (r approximately 0.80) is a stronger predictor of sale price",
+    "than Above-Ground Living Area (r approximately 0.71). The scatterplot for quality",
+    "vs. price shows a steep, consistent trend with less scatter around the line.",
+    "This makes practical sense: buyers pay a premium for high-quality finishes and",
+    "construction, and a well-built smaller home often commands a higher price than a",
+    "larger but lower-quality property."
+  ),
+
+  rq13 = paste(
+    "Sale Price: Continuous numerical -- total dollar amount paid; ranges from",
+    "approximately $12,789 to $755,000.",
+    "Above-Ground Living Area: Continuous numerical -- total finished living space",
+    "above grade in square feet; ranges from 334 to 5,642 sq ft.",
+    "Overall Quality (1-10): Ordinal categorical -- rated scale from 1 (Very Poor)",
+    "to 10 (Very Excellent); values are ordered but intervals are not guaranteed equal.",
+    "Year Built: Discrete numerical -- calendar year originally constructed; ranges",
+    "from 1872 to 2010.",
+    "Bedrooms Above Grade: Discrete numerical -- count of bedrooms above basement",
+    "level; ranges from 0 to 8.",
+    "Full Bathrooms: Discrete numerical -- count of full bathrooms in the home;",
+    "ranges from 0 to 4.",
+    "Total Basement Area: Continuous numerical -- total basement floor area in square",
+    "feet; ranges from 0 to 6,110 sq ft.",
+    "Garage Area: Continuous numerical -- floor area of the garage in square feet;",
+    "ranges from 0 to 1,418 sq ft."
+  )
+)
+```
+
+---
+
+# Section 1: Dataset Overview
+
+```{r rq123, results='asis'}
+rq_block("RQ 1",
+  "How many observations and variables does this dataset have? What does one row represent?",
+  params$ans1, solutions$rq1)
+
+rq_block("RQ 2",
+  "Look at the first few rows. Can you identify one numerical variable and one categorical variable?",
+  params$ans2, solutions$rq2)
+
+rq_block("RQ 3",
+  "What does the Sale Price variable tell us? What are reasonable minimum and maximum values?",
+  params$ans3, solutions$rq3)
+```
+
+\newpage
+
+# Section 2: Histogram
+
+*The histogram below reflects the state of the chart when the report was downloaded.*
+
+```{r hist_plot, out.width="95%", fig.align="center"}
+if (nchar(params$hist_img) > 0 && file.exists(params$hist_img)) {
+  knitr::include_graphics(params$hist_img)
+}
+```
+
+```{r rq456, results='asis'}
+rq_block("RQ 4",
+  "Set the variable to Sale Price and bins to 30. Describe the shape of the distribution. Is it symmetric or skewed? What does that tell you about typical home prices in Ames?",
+  params$ans4, solutions$rq4)
+
+rq_block("RQ 5",
+  "Compare the mean and median Sale Price shown in the summary panel. Which is larger? Why might they differ? Which better represents a 'typical' home price?",
+  params$ans5, solutions$rq5)
+
+rq_block("RQ 6",
+  "Switch to 'Year Built'. Try different bin widths. In which decade were the most homes built? How does bin width change your interpretation?",
+  params$ans6, solutions$rq6)
+```
+
+\newpage
+
+# Section 3: Boxplot
+
+*The boxplot below reflects the state of the chart when the report was downloaded.*
+
+```{r box_plot, out.width="95%", fig.align="center"}
+if (nchar(params$box_img) > 0 && file.exists(params$box_img)) {
+  knitr::include_graphics(params$box_img)
+}
+```
+
+```{r rq789, results='asis'}
+rq_block("RQ 7",
+  "Group Sale Price by Building Type. Which type has the highest median price? Which has the most variability (widest box)?",
+  params$ans7, solutions$rq7)
+
+rq_block("RQ 8",
+  "Notice the difference between the mean (x) and median (center line) in each group. In which group is the difference largest? What does that tell you about outliers in that group?",
+  params$ans8, solutions$rq8)
+
+rq_block("RQ 9",
+  "Switch grouping to Neighborhood. Which neighborhood has the highest median sale price? Which has the most outliers?",
+  params$ans9, solutions$rq9)
+```
+
+\newpage
+
+# Section 4: Scatterplot
+
+*The scatterplot below reflects the state of the chart when the report was downloaded.*
+
+```{r scat_plot, out.width="95%", fig.align="center"}
+if (nchar(params$scat_img) > 0 && file.exists(params$scat_img)) {
+  knitr::include_graphics(params$scat_img)
+}
+```
+
+```{r rq101112, results='asis'}
+rq_block("RQ 10",
+  "Plot Sale Price (y) vs. Above-Ground Living Area (x). Describe the relationship. Is it positive or negative? Strong or weak? Are there any unusual points?",
+  params$ans10, solutions$rq10)
+
+rq_block("RQ 11",
+  "Color the points by Building Type. Do different building types cluster in different regions of the plot? What does this suggest about how building type relates to both size and price?",
+  params$ans11, solutions$rq11)
+
+rq_block("RQ 12",
+  "Try Overall Quality on the x-axis with Sale Price on y. Is quality or living area a stronger predictor of price? Use the correlation value and the trend line to support your answer.",
+  params$ans12, solutions$rq12)
+```
+
+\newpage
+
+# Section 5: Variable Types
+
+```{r rq13, results='asis'}
+rq_block("RQ 13",
+  "Classify all 8 numeric variables listed in the dropdown. For each one, write a one-sentence data dictionary entry that includes the variable name, type, units (if applicable), and expected range.",
+  params$ans13, solutions$rq13)
+```
