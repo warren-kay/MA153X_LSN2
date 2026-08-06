@@ -712,11 +712,12 @@ server <- function(input, output, session) {
     }
 
     # Collect responses grouped by tab, in RQ order
-    resp_tab1 <- sapply(c("rq_1_1", "rq_1_2", "rq_1_3"), function(id) input[[id]] %||% "")
-    resp_tab2 <- sapply(c("rq_2_1", "rq_2_2", "rq_2_3"), function(id) input[[id]] %||% "")
-    resp_tab3 <- sapply(c("rq_3_1", "rq_3_2", "rq_3_3"), function(id) input[[id]] %||% "")
-    resp_tab4 <- sapply(c("rq_4_1", "rq_4_2", "rq_4_3"), function(id) input[[id]] %||% "")
-    resp_tab5 <- sapply(c("rq_5_1"),                     function(id) input[[id]] %||% "")
+    get_resp <- function(id) { v <- input[[id]]; if (is.null(v)) "" else v }
+    resp_tab1 <- sapply(c("rq_1_1", "rq_1_2", "rq_1_3"), get_resp)
+    resp_tab2 <- sapply(c("rq_2_1", "rq_2_2", "rq_2_3"), get_resp)
+    resp_tab3 <- sapply(c("rq_3_1", "rq_3_2", "rq_3_3"), get_resp)
+    resp_tab4 <- sapply(c("rq_4_1", "rq_4_2", "rq_4_3"), get_resp)
+    resp_tab5 <- sapply(c("rq_5_1"),                     get_resp)
 
     tmp <- tempfile(fileext = ".pdf")
     tryCatch({
