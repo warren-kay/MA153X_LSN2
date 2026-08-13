@@ -231,11 +231,12 @@ ui <- fluidPage(
       fluidRow(
         column(8,
           h2("What is this dataset?"),
-          p("This dataset contains information on", strong("2,930 residential home sales"),
-            "in Ames, Iowa from 2006–2010. Each row is one house sale.",
-            "There are 82 variables describing each property."),
+          p("This dataset contains information on residential home sales in",
+            "Ames, Iowa from 2006–2010. Each variable describes some aspect",
+            "of a property or the terms of its sale."),
           p("Before we can analyze data, we need to understand its structure.",
-            "Use the controls on the right to explore the dataset."),
+            "Use the controls on the right and the preview table below to",
+            "explore the dataset before answering the research questions."),
           br(),
           h4("Research Questions"),
 
@@ -279,6 +280,8 @@ ui <- fluidPage(
             selectInput("histVar", NULL, choices = num_vars, selected = "SalePrice"),
             h4("Number of bins"),
             sliderInput("histBins", NULL, min = 5, max = 60, value = 30, step = 1),
+            div(style = "font-size:12px; color:#666; margin-top:-8px; margin-bottom:14px;",
+                textOutput("histBinWidth", inline = TRUE)),
             h4("Filter by building type"),
             checkboxGroupInput("histBldg", NULL,
                                choices  = sort(unique(housing$Bldg.Type)),
@@ -497,6 +500,20 @@ server <- function(input, output, session) {
 
   output$histPlot <- renderPlot({ hist_plot_obj() })
 
+  output$histBinWidth <- renderText({
+    d    <- hist_data()
+    col  <- input$histVar
+    vals <- d[[col]]
+    req(length(vals) > 1)
+    bins  <- input$histBins
+    rng   <- range(vals, na.rm = TRUE)
+    width <- if (bins > 1) (rng[2] - rng[1]) / (bins - 1) else diff(rng)
+    width_fmt <- if (width >= 100) scales::comma(round(width))
+                 else if (width >= 1) scales::comma(round(width, 1))
+                 else scales::comma(round(width, 3))
+    paste0("Bin width ≈ ", width_fmt, " per bin")
+  })
+
   output$histStats <- renderUI({
     d    <- hist_data()
     col  <- input$histVar
@@ -639,15 +656,39 @@ server <- function(input, output, session) {
     isolate({
       correct <- correct_types[[input$typeVar]]
       if (is.null(correct)) return(NULL)
-      if (input$typeClass == correct) {
+      guess <- input$typeClass
+
+      if (guess == correct) {
         div(style = "background:#eafaf1; border-left:4px solid #2ca05a;
                      padding:10px 14px; border-radius:0 6px 6px 0;",
-            tags$b("Correct! "), correct)
+            tags$b("Correct! "), "That classification fits this variable well.")
       } else {
+        numeric_types     <- c("Continuous numerical", "Discrete numerical")
+        categorical_types <- c("Nominal categorical", "Ordinal categorical", "Binary categorical")
+        guess_is_numeric   <- guess   %in% numeric_types
+        correct_is_numeric <- correct %in% numeric_types
+
+        hint <- if (guess_is_numeric != correct_is_numeric) {
+          paste("Look again at the 'Type detected by R' and the values shown",
+                "on the left. Does this variable represent a quantity you",
+                "could do arithmetic with (like adding or averaging), or",
+                "does it sort observations into named groups?")
+        } else if (correct_is_numeric) {
+          paste("You're on the right track — this is numerical. Now look",
+                "more closely at the values: can this variable take on any",
+                "value in its range, including fractions or decimals, or",
+                "can it only take specific whole-number counts with gaps",
+                "between the possible values?")
+        } else {
+          paste("You're on the right track — this is categorical. Now look",
+                "more closely at the categories: how many distinct categories",
+                "are there, and do those categories have a natural order or",
+                "ranking, or are they just separate, unordered labels?")
+        }
+
         div(style = "background:#fdf3ee; border-left:4px solid #e05c2a;
                      padding:10px 14px; border-radius:0 6px 6px 0;",
-            tags$b("Not quite. "),
-            paste("The correct classification is:", correct))
+            tags$b("Not quite yet — think about this: "), hint)
       }
     })
   })
